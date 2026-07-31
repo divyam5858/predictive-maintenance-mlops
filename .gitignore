@@ -1,0 +1,50 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# ZenML local configuration
+.zen/
+
+# MLflow local files
+mlruns/
+mlartifacts/
+mlflow.db
+
+# Generated artifacts and models
+artifacts/*
+!artifacts/.gitkeep
+
+models/*
+!models/.gitkeep
+
+# Processed/local datasets
+data/raw/*
+!data/raw/.gitkeep
+
+data/processed/*
+!data/processed/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
