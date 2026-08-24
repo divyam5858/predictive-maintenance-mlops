@@ -4,9 +4,12 @@ import pandas as pd
 from src.data_ingestion import load_sensor_data
 
 
-@step
+@step(
+    name="ingest_sensor_data",
+    enable_artifact_metadata=True,
+)
 def ingest_data() -> pd.DataFrame:
-    """ZenML step for loading the raw sensor dataset."""
+    """Load the raw predictive maintenance sensor dataset."""
 
     df = load_sensor_data()
 

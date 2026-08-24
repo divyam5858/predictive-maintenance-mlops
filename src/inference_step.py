@@ -3,7 +3,10 @@ from sklearn.ensemble import RandomForestClassifier
 from zenml import step
 
 
-@step
+@step(
+    name="predict_machine_failure",
+    enable_artifact_metadata=True,
+)
 def predict_failure(
     model: RandomForestClassifier,
     X_test: pd.DataFrame,

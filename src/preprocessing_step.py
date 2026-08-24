@@ -4,11 +4,14 @@ from zenml import step
 from src.preprocessing import preprocess_sensor_data
 
 
-@step
+@step(
+    name="preprocess_sensor_data",
+    enable_artifact_metadata=True,
+)
 def preprocess_data(
     df: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.Series]:
-    """ZenML step for preprocessing predictive maintenance data."""
+    """Preprocess sensor data into model features and target."""
 
     X, y = preprocess_sensor_data(df)
 
