@@ -190,3 +190,4 @@ yarl==1.24.5
 zenml==0.96.2
 zipp==4.1.0
 pytest==9.1.1
+great_expectations==1.22.0

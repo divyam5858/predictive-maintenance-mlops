@@ -1,20 +1,22 @@
-import pandas as pd
 import mlflow
-import mlflow.sklearn
+import pandas as pd
 
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     accuracy_score,
+    f1_score,
     precision_score,
     recall_score,
-    f1_score,
 )
+from sklearn.model_selection import train_test_split
 
 from zenml import step
 
 from configs.pipeline_config import PipelineConfig
-
+from src.feature_pipeline import (
+    fit_and_transform_training_features,
+    transform_model_features,
+)
 
 
 @step(
@@ -26,96 +28,188 @@ def train_model(
     y: pd.Series,
 ) -> tuple[
     RandomForestClassifier,
+    object,
     pd.DataFrame,
     pd.Series,
-    dict[str, float],
+    dict,
 ]:
-    """Train, evaluate, and track the baseline Random Forest model."""
+    """
+    Split the data, fit feature preprocessing on the
+    training partition only, train the Random Forest model,
+    and evaluate it on transformed test data.
+    """
 
-    # Load centralized pipeline configuration.
     config = PipelineConfig()
 
-    # Configure MLflow using centralized configuration.
-    mlflow.set_tracking_uri(config.mlflow_tracking_uri)
-    mlflow.set_experiment(config.mlflow_experiment_name)
-
-    # Split data using configured parameters.
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=config.test_size,
-        random_state=config.random_state,
-        stratify=y,
+    # Configure MLflow.
+    mlflow.set_tracking_uri(
+        config.mlflow_tracking_uri
     )
 
-    # Start an MLflow experiment run.
+    mlflow.set_experiment(
+        config.mlflow_experiment_name
+    )
+
+    # Split the feature-selected data into training
+    # and test partitions.
+    X_train, X_test, y_train, y_test = (
+        train_test_split(
+            X,
+            y,
+            test_size=config.test_size,
+            random_state=config.random_state,
+            stratify=y,
+        )
+    )
+
+    print(
+        f"Training samples: {len(X_train)}"
+    )
+
+    print(
+        f"Test samples: {len(X_test)}"
+    )
+
+    # Fit the feature preprocessing pipeline using
+    # training data only.
+    X_train_transformed, preprocessor = (
+        fit_and_transform_training_features(
+            X_train
+        )
+    )
+
+    # Reuse the fitted preprocessor to transform
+    # the test data.
+    X_test_transformed = transform_model_features(
+        preprocessor,
+        X_test,
+    )
+
+    print(
+        f"Transformed training shape: "
+        f"{X_train_transformed.shape}"
+    )
+
+    print(
+        f"Transformed test shape: "
+        f"{X_test_transformed.shape}"
+    )
+
+    # Start an MLflow run for experiment tracking.
     with mlflow.start_run(
         run_name="predictive-maintenance-random-forest"
     ):
 
-        # Log model configuration to MLflow.
-        mlflow.log_params({
-            "model": "RandomForestClassifier",
-            "n_estimators": config.n_estimators,
-            "random_state": config.random_state,
-            "class_weight": config.class_weight,
-            "test_size": config.test_size,
-        })
+        # Log model configuration.
+        mlflow.log_param(
+            "model_type",
+            "RandomForestClassifier",
+        )
 
-        # Create the model from centralized configuration.
+        mlflow.log_param(
+            "test_size",
+            config.test_size,
+        )
+
+        mlflow.log_param(
+            "random_state",
+            config.random_state,
+        )
+
+        mlflow.log_param(
+            "n_estimators",
+            config.n_estimators,
+        )
+
+        mlflow.log_param(
+            "class_weight",
+            config.class_weight,
+        )
+
+        # Record the number of features after
+        # scaling and categorical encoding.
+        mlflow.log_param(
+            "feature_count",
+            X_train_transformed.shape[1],
+        )
+
+        # Create the Random Forest model.
         model = RandomForestClassifier(
             n_estimators=config.n_estimators,
             random_state=config.random_state,
             class_weight=config.class_weight,
         )
 
-        # Train only on training data.
-        model.fit(X_train, y_train)
-
-        # Evaluate on unseen test data.
-        predictions = model.predict(X_test)
-
-        accuracy = accuracy_score(y_test, predictions)
-
-        precision = precision_score(
-            y_test,
-            predictions,
-            zero_division=0,
+        # Train the model using transformed training data.
+        model.fit(
+            X_train_transformed,
+            y_train,
         )
 
-        recall = recall_score(
-            y_test,
-            predictions,
-            zero_division=0,
+        # Generate predictions on transformed test data.
+        predictions = model.predict(
+            X_test_transformed
         )
 
-        f1 = f1_score(
-            y_test,
-            predictions,
-            zero_division=0,
-        )
-
+        # Calculate evaluation metrics.
         metrics = {
-            "accuracy": float(accuracy),
-            "precision": float(precision),
-            "recall": float(recall),
-            "f1_score": float(f1),
+            "accuracy": accuracy_score(
+                y_test,
+                predictions,
+            ),
+            "precision": precision_score(
+                y_test,
+                predictions,
+                zero_division=0,
+            ),
+            "recall": recall_score(
+                y_test,
+                predictions,
+                zero_division=0,
+            ),
+            "f1": f1_score(
+                y_test,
+                predictions,
+                zero_division=0,
+            ),
         }
 
         # Log evaluation metrics to MLflow.
-        mlflow.log_metrics(metrics)
+        for metric_name, value in metrics.items():
+            mlflow.log_metric(
+                metric_name,
+                value,
+            )
 
-        # Log trained model to MLflow.
+        # Log the trained model.
         mlflow.sklearn.log_model(
             model,
-            name="random_forest_model",
+            "model",
         )
 
-        print(f"Training samples: {len(X_train)}")
-        print(f"Testing samples: {len(X_test)}")
-        print(f"Accuracy: {accuracy:.4f}")
-        print(f"Precision: {precision:.4f}")
-        print(f"Recall: {recall:.4f}")
-        print(f"F1 Score: {f1:.4f}")
+        # Display metrics in the pipeline output.
+        print(
+            f"Accuracy: {metrics['accuracy']:.4f}"
+        )
 
-    return model, X_test, y_test, metrics
+        print(
+            f"Precision: {metrics['precision']:.4f}"
+        )
+
+        print(
+            f"Recall: {metrics['recall']:.4f}"
+        )
+
+        print(
+            f"F1 Score: {metrics['f1']:.4f}"
+        )
+
+    # Return the model, fitted preprocessor, transformed
+    # test data, test target, and evaluation metrics.
+    return (
+        model,
+        preprocessor,
+        X_test_transformed,
+        y_test,
+        metrics,
+    )

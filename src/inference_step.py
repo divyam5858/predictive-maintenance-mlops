@@ -1,4 +1,5 @@
 import pandas as pd
+
 from sklearn.ensemble import RandomForestClassifier
 from zenml import step
 
@@ -11,19 +12,28 @@ def predict_failure(
     model: RandomForestClassifier,
     X_test: pd.DataFrame,
     y_test: pd.Series,
-) -> pd.DataFrame:
-    """Generate predictions on unseen test data."""
+) -> pd.Series:
+    """
+    Generate predictions using transformed test features.
+    """
 
     predictions = model.predict(X_test)
 
-    results = pd.DataFrame({
-        "actual_failure": y_test.values,
-        "predicted_failure": predictions,
-    })
+    print(
+        f"Prediction samples: {len(predictions)}"
+    )
 
-    print("Inference completed on unseen test data.")
-    print(f"Prediction samples: {len(results)}")
-    print("\nPrediction distribution:")
-    print(results["predicted_failure"].value_counts())
+    print(
+        f"Actual test samples: {len(y_test)}"
+    )
 
-    return results
+    print(
+        f"Predicted failure distribution:\n"
+        f"{pd.Series(predictions).value_counts()}"
+    )
+
+    return pd.Series(
+        predictions,
+        index=X_test.index,
+        name="prediction",
+    )

@@ -1,7 +1,11 @@
 from zenml import pipeline
 
 from src.ingestion_step import ingest_data
-from src.preprocessing_step import preprocess_data
+from src.cleaning_step import clean_data
+from src.validation_step import validate_sensor_data
+from src.feature_engineering_step import (
+    engineer_and_select_features,
+)
 from src.training_step import train_model
 from src.inference_step import predict_failure
 
@@ -9,23 +13,37 @@ from src.inference_step import predict_failure
 @pipeline
 def predictive_maintenance_pipeline():
     """
-    End-to-end predictive maintenance machine learning pipeline.
+    End-to-end predictive maintenance pipeline.
 
-    Workflow:
-        1. Ingest raw sensor data
-        2. Preprocess features and target
-        3. Train and evaluate the model
-        4. Generate predictions on unseen data
+    The pipeline ingests, cleans, validates, engineers,
+    selects, preprocesses, trains, and predicts.
     """
 
-    # Step 1: Ingest raw sensor data.
     data = ingest_data()
 
-    # Step 2: Preprocess data into features and target.
-    X, y = preprocess_data(data)
+    cleaned_data = clean_data(data)
 
-    # Step 3: Train the model and prepare test data.
-    model, X_test, y_test, metrics = train_model(X, y)
+    validated_data = validate_sensor_data(
+        cleaned_data
+    )
 
-    # Step 4: Generate predictions on unseen test data.
-    predict_failure(model, X_test, y_test)
+    X, y = engineer_and_select_features(
+        validated_data
+    )
+
+    (
+        model,
+        preprocessor,
+        X_test,
+        y_test,
+        metrics,
+    ) = train_model(
+        X,
+        y,
+    )
+
+    predict_failure(
+        model,
+        X_test,
+        y_test,
+    )
