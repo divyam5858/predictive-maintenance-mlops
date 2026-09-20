@@ -47,4 +47,7 @@ data/processed/*
 Thumbs.db
 
 # Logs
-*.log
+*.logmlflow_artifacts/
+
+# MLflow generated training artifacts
+mlflow_artifacts/

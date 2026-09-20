@@ -1,9 +1,15 @@
+import os
+
 import mlflow
 import pandas as pd
+
+from mlflow.models import infer_signature
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
+    classification_report,
+    confusion_matrix,
     f1_score,
     precision_score,
     recall_score,
@@ -22,6 +28,7 @@ from src.feature_pipeline import (
 @step(
     name="train_random_forest",
     enable_artifact_metadata=True,
+    enable_cache=False,
 )
 def train_model(
     X: pd.DataFrame,
@@ -36,7 +43,8 @@ def train_model(
     """
     Split the data, fit feature preprocessing on the
     training partition only, train the Random Forest model,
-    and evaluate it on transformed test data.
+    evaluate it on transformed test data, and log
+    experiment artifacts to MLflow.
     """
 
     config = PipelineConfig()
@@ -151,6 +159,13 @@ def train_model(
             X_test_transformed
         )
 
+        # Infer the MLflow model signature from
+        # the transformed test features and predictions.
+        signature = infer_signature(
+            X_test_transformed,
+            predictions,
+        )
+
         # Calculate evaluation metrics.
         metrics = {
             "accuracy": accuracy_score(
@@ -181,10 +196,88 @@ def train_model(
                 value,
             )
 
-        # Log the trained model.
+        # Create a temporary directory for experiment artifacts.
+        artifact_dir = "mlflow_artifacts"
+
+        os.makedirs(
+            artifact_dir,
+            exist_ok=True,
+        )
+
+        # Create a detailed classification report.
+        classification_report_path = os.path.join(
+            artifact_dir,
+            "classification_report.txt",
+        )
+
+        with open(
+            classification_report_path,
+            "w",
+            encoding="utf-8",
+        ) as file:
+            file.write(
+                classification_report(
+                    y_test,
+                    predictions,
+                    digits=4,
+                )
+            )
+
+        # Create a confusion matrix artifact.
+        confusion_matrix_path = os.path.join(
+            artifact_dir,
+            "confusion_matrix.csv",
+        )
+
+        confusion_matrix_values = confusion_matrix(
+            y_test,
+            predictions,
+        )
+
+        confusion_matrix_df = pd.DataFrame(
+            confusion_matrix_values,
+            index=[
+                "actual_0",
+                "actual_1",
+            ],
+            columns=[
+                "predicted_0",
+                "predicted_1",
+            ],
+        )
+
+        confusion_matrix_df.to_csv(
+            confusion_matrix_path
+        )
+
+        # Record the transformed feature names.
+        feature_names_path = os.path.join(
+            artifact_dir,
+            "feature_names.txt",
+        )
+
+        feature_names = X_train_transformed.columns
+
+        with open(
+            feature_names_path,
+            "w",
+            encoding="utf-8",
+        ) as file:
+            for feature_name in feature_names:
+                file.write(
+                    f"{feature_name}\n"
+                )
+
+        # Log the generated artifacts to MLflow.
+        mlflow.log_artifacts(
+            artifact_dir
+        )
+
+        # Log the trained model with its input/output signature.
         mlflow.sklearn.log_model(
             model,
-            "model",
+            name="model",
+            signature=signature,
         )
 
         # Display metrics in the pipeline output.

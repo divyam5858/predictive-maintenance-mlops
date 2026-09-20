@@ -1,3 +1,5 @@
+import os
+
 from dataclasses import dataclass
 
 
@@ -10,9 +12,18 @@ class PipelineConfig:
     random_state: int = 42
 
     # Random Forest configuration
-    n_estimators: int = 100
+    n_estimators: int = int(
+        os.getenv(
+            "PM_N_ESTIMATORS",
+            "100",
+        )
+    )
     class_weight: str = "balanced"
 
     # MLflow configuration
-    mlflow_tracking_uri: str = "http://127.0.0.1:5000"
-    mlflow_experiment_name: str = "Predictive Maintenance"
+    mlflow_tracking_uri: str = (
+        "http://127.0.0.1:5000"
+    )
+    mlflow_experiment_name: str = (
+        "Predictive Maintenance"
+    )
