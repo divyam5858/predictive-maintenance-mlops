@@ -321,11 +321,3 @@ The implementation and textbook are developed together so that the concepts intr
 
 ```
 
-### One very important thing
-
-The **first** and **last** triple-backtick lines above are part of the content formatting around the project structure/workflow. When you paste the whole thing into GitHub, GitHub will render them correctly.
-
-You do **not** need to manually figure out which part to keep or remove.
-
-**Just Ctrl+A → paste the entire content above → Commit changes.**
-```
