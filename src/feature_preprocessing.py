@@ -77,8 +77,14 @@ def create_feature_preprocessor() -> ColumnTransformer:
         verbose_feature_names_out=False,
     )
 
-    return preprocessor
+    # Keep feature names attached to the transformed data.
+    # This provides consistent feature names to downstream
+    # models such as LightGBM.
+    preprocessor.set_output(
+        transform="pandas"
+    )
 
+    return preprocessor
 
 def fit_feature_preprocessor(
     X_train: pd.DataFrame,

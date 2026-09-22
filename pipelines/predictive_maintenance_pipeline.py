@@ -7,6 +7,9 @@ from src.feature_engineering_step import (
     engineer_and_select_features,
 )
 from src.training_step import train_model
+from src.model_evaluation_step import (
+    evaluate_trained_model,
+)
 from src.inference_step import predict_failure
 
 
@@ -16,12 +19,14 @@ def predictive_maintenance_pipeline():
     End-to-end predictive maintenance pipeline.
 
     The pipeline ingests, cleans, validates, engineers,
-    selects, preprocesses, trains, and predicts.
+    selects, preprocesses, trains, evaluates, and predicts.
     """
 
     data = ingest_data()
 
-    cleaned_data = clean_data(data)
+    cleaned_data = clean_data(
+        data
+    )
 
     validated_data = validate_sensor_data(
         cleaned_data
@@ -40,6 +45,12 @@ def predictive_maintenance_pipeline():
     ) = train_model(
         X,
         y,
+    )
+
+    evaluate_trained_model(
+        model,
+        X_test,
+        y_test,
     )
 
     predict_failure(
