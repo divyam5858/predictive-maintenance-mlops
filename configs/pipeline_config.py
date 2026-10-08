@@ -27,3 +27,11 @@ class PipelineConfig:
     mlflow_experiment_name: str = (
         "Predictive Maintenance"
     )
+
+    # MLflow Model Registry configuration
+    mlflow_model_name: str = (
+        "predictive-maintenance-model"
+    )
+    mlflow_model_artifact_path: str = (
+        "model"
+    )
